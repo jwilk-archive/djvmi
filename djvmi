@@ -1,0 +1,80 @@
+#!/usr/bin/python
+
+from shutil import rmtree
+from tempfile import mkdtemp, NamedTemporaryFile
+from os.path import basename, join as path_join
+from os import link
+from subprocess import call
+from optparse import OptionParser
+
+DUMMY_DJVU = 'AT&TFORM\x00\x00\x00"DJVUINFO\x00\x00\x00\n\x00\x01\x00\x01\x18\x00,\x01\x16\x00Sjbz\x00\x00\x00\x04\xbcs\x1b\xd7'
+
+class TemporaryDirectory(object):
+	
+	def __init__(self, *args, **kwargs):
+		self.path = mkdtemp(*args, **kwargs)
+		self.cleaned = True
+
+	def __str__(self):
+		if not self.path:
+			raise ValueError
+		return self.path
+
+	def clean(self):
+		if not self.path:
+			return
+		rmtree(self.path)
+		self.path = None
+		self.cleaned = True
+
+oparser = OptionParser(usage = 'usage: %prog [action] [pages]')
+oparser.add_option(
+	'-c', '--create',
+	help = 'compose an indirect multi-page document', metavar = 'FILE',
+	action = 'store', type = 'string', dest = 'create_file_name', default = None)
+(options, file_names) = oparser.parse_args()
+if not options.create_file_name:
+	oparser.error('No action specified')
+if not file_names:
+	oparser.error('No pages specified')
+
+tmp_dir = TemporaryDirectory(prefix = 'djvmi')
+try:
+	file = None
+	dummy_file_names = []
+	for file_name in file_names:
+		if basename(file_name) != file_name:
+			raise ValueError('Please use base name for %r' % file_name)
+		dummy_file_name = path_join(str(tmp_dir), file_name)
+		if file is None:
+			try:
+				file = open(dummy_file_name, 'wb')
+				file.write(DUMMY_DJVU)
+			finally:
+				file.close()
+		else:
+			link(file.name, dummy_file_name)
+		dummy_file_names += dummy_file_name,
+	bundled_file = NamedTemporaryFile(dir = str(tmp_dir))
+	if call(['/usr/bin/djvm', '-c', bundled_file.name] + dummy_file_names) != 0:
+		raise IOError
+	index_file = NamedTemporaryFile(dir = str(tmp_dir))
+	if call(['/usr/bin/djvmcvt', '-i', bundled_file.name, str(tmp_dir), index_file.name]) != 0:
+		raise IOError
+	stdout = open(options.create_file_name, 'w+b')
+	try:
+		stdout.write(index_file.read())
+	finally:
+		stdout.close()
+finally:
+	try:
+		bundled_file.close()
+	except NameError:
+		pass
+	try:
+		index_file.close()
+	except NameError:
+		pass
+	tmp_dir.clean()
+
+# vim:ts=4 sw=4 noet
