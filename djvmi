@@ -10,7 +10,7 @@ from optparse import OptionParser
 DUMMY_DJVU = 'AT&TFORM\x00\x00\x00"DJVUINFO\x00\x00\x00\n\x00\x01\x00\x01\x18\x00,\x01\x16\x00Sjbz\x00\x00\x00\x04\xbcs\x1b\xd7'
 
 class TemporaryDirectory(object):
-	
+
 	def __init__(self, *args, **kwargs):
 		self.path = mkdtemp(*args, **kwargs)
 		self.cleaned = True
