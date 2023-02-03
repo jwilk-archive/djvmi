@@ -1,4 +1,8 @@
 #!/usr/bin/python
+# encoding=UTF-8
+
+# Copyright © 2007, 2023 Jakub Wilk <jwilk@jwilk.net>
+# SPDX-License-Identifier: MIT
 
 from shutil import rmtree
 from tempfile import mkdtemp, NamedTemporaryFile
